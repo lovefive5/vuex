@@ -2,15 +2,16 @@ export default function (Vue) {
   const version = Number(Vue.version.split('.')[0])
 
   if (version >= 2) {
+    // mixin 到vue上 , 注入
     Vue.mixin({ beforeCreate: vuexInit })
   } else {
     // override init and inject vuex init procedure
     // for 1.x backwards compatibility.
     const _init = Vue.prototype._init
     Vue.prototype._init = function (options = {}) {
-      options.init = options.init
-        ? [vuexInit].concat(options.init)
-        : vuexInit
+
+      options.init = options.init ? [vuexInit].concat(options.init) : vuexInit
+
       _init.call(this, options)
     }
   }
@@ -19,7 +20,9 @@ export default function (Vue) {
    * Vuex init hook, injected into each instances init hooks list.
    */
 
-  function vuexInit () {
+  function vuexInit() {
+    console.log('vuex - beforeCreate')
+    // console.log("this.$options.store", this.$options.store)
     const options = this.$options
     // store injection
     if (options.store) {

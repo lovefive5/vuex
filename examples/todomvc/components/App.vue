@@ -5,25 +5,26 @@
     <!-- header -->
     <header class="header">
       <h1>todos</h1>
-      <input class="new-todo"
+      <input
+        class="new-todo"
         autofocus
         autocomplete="off"
         placeholder="What needs to be done?"
-        @keyup.enter="addTodo">
+        @keyup.enter="addTodo"
+      />
     </header>
     <!-- main section -->
     <section class="main" v-show="todos.length">
-      <input class="toggle-all" id="toggle-all"
+      <input
+        class="toggle-all"
+        id="toggle-all"
         type="checkbox"
         :checked="allChecked"
-        @change="toggleAll(!allChecked)">
+        @change="toggleAll(!allChecked)"
+      />
       <label for="toggle-all"></label>
       <ul class="todo-list">
-        <TodoItem
-          v-for="(todo, index) in filteredTodos"
-          :key="index"
-          :todo="todo"
-        />
+        <TodoItem v-for="(todo, index) in filteredTodos" :key="index" :todo="todo" />
       </ul>
     </section>
     <!-- footer -->
@@ -34,68 +35,70 @@
       </span>
       <ul class="filters">
         <li v-for="(val, key) in filters">
-          <a :href="'#/' + key"
+          <a
+            :href="'#/' + key"
             :class="{ selected: visibility === key }"
-            @click="visibility = key">{{ key | capitalize }}</a>
+            @click="visibility = key"
+          >{{ key | capitalize }}</a>
         </li>
       </ul>
-      <button class="clear-completed"
+      <button
+        class="clear-completed"
         v-show="todos.length > remaining"
-        @click="clearCompleted">
-        Clear completed
-      </button>
+        @click="clearCompleted"
+      >Clear completed</button>
     </footer>
   </section>
 </template>
 
 <script>
-import { mapActions } from 'vuex'
-import TodoItem from './TodoItem.vue'
+import { mapActions } from "vuex";
+import TodoItem from "./TodoItem.vue";
 
 const filters = {
   all: todos => todos,
   active: todos => todos.filter(todo => !todo.done),
   completed: todos => todos.filter(todo => todo.done)
-}
+};
 
 export default {
   components: { TodoItem },
-  data () {
+  data() {
     return {
-      visibility: 'all',
+      visibility: "all",
       filters: filters
-    }
+    };
   },
   computed: {
-    todos () {
-      return this.$store.state.todos
+    todos() {
+      return this.$store.state.todos;
     },
-    allChecked () {
-      return this.todos.every(todo => todo.done)
+    allChecked() {
+      return this.todos.every(todo => todo.done);
     },
-    filteredTodos () {
-      return filters[this.visibility](this.todos)
+    filteredTodos() {
+      return filters[this.visibility](this.todos);
     },
-    remaining () {
-      return this.todos.filter(todo => !todo.done).length
+    remaining() {
+      return this.todos.filter(todo => !todo.done).length;
     }
   },
+  beforeCreate() {
+    console.log("component - beforeCreate");
+  },
   methods: {
-    ...mapActions([
-      'toggleAll',
-      'clearCompleted'
-    ]),
-    addTodo (e) {
-      const text = e.target.value
+    ...mapActions(["toggleAll", "clearCompleted"]),
+    addTodo(e) {
+      const text = e.target.value;
       if (text.trim()) {
-        this.$store.dispatch('addTodo', text)
+        this.$store.dispatch("addTodo", text);
       }
-      e.target.value = ''
+      e.target.value = "";
     }
   },
   filters: {
-    pluralize: (n, w) => n === 1 ? w : (w + 's'),
+    pluralize: (n, w) => (n === 1 ? w : w + "s"),
     capitalize: s => s.charAt(0).toUpperCase() + s.slice(1)
   }
-}
+};
 </script>
