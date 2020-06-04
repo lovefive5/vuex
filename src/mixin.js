@@ -18,13 +18,16 @@ export default function (Vue) {
 
   /**
    * Vuex init hook, injected into each instances init hooks list.
+   * store 会先被挂载到父组件上，然后 子组件的store会取父组件的store
    */
 
-  function vuexInit() {
-    console.log('vuex - beforeCreate')
+  function vuexInit () {
+    // console.log('vuex - beforeCreate')
     // console.log("this.$options.store", this.$options.store)
     const options = this.$options
-    // store injection
+    // store injection  - store 注入
+    // console.log('options.store', options.store)
+    // debugger
     if (options.store) {
       this.$store = typeof options.store === 'function'
         ? options.store()
