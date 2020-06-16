@@ -21,6 +21,16 @@ export default function (Vue) {
    * store 会先被挂载到父组件上，然后 子组件的store会取父组件的store
    */
 
+  /**
+   * 执行以下操作的时候，会把 Store 绑定到 Vue.option 上
+   * new Vue({
+      store, // inject store to all children
+      el: '#app',
+      render: h => h(App)
+    })
+   *
+   */
+
   function vuexInit () {
     // console.log('vuex - beforeCreate')
     // console.log("this.$options.store", this.$options.store)

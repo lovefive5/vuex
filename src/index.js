@@ -4,6 +4,7 @@ import { mapState, mapMutations, mapGetters, mapActions, createNamespacedHelpers
 export default {
   Store,
   install,
+  // 打包时候会注入当前版本号
   version: '__VERSION__',
   mapState,
   mapMutations,
