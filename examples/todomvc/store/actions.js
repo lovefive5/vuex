@@ -1,8 +1,13 @@
 export default {
   addTodo ({ commit }, text) {
-    commit('addTodo', {
-      text,
-      done: false
+    return new Promise(resolve => {
+      setTimeout(() => {
+        commit('addTodo', {
+          text,
+          done: false
+        })
+        resolve(true)
+      }, 10)
     })
   },
 

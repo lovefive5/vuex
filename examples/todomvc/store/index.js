@@ -12,6 +12,12 @@ export default new Vuex.Store({
   state: {
     todos: JSON.parse(window.localStorage.getItem(STORAGE_KEY) || '[]')
   },
+  getters: {
+    doneTodos: (state, a1, a2, a3) => {
+      // console.log(state, a1, a2, a3)
+      return state.todos.filter(todo => !todo.done)
+    }
+  },
   actions,
   mutations,
   plugins

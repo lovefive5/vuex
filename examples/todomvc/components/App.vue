@@ -73,7 +73,8 @@
     computed: {
       todos () {
         console.log('computed todos', this)
-        return this.$store.state.todos
+        // return this.$store.getters.doneTodos;
+        return this.$store.state.todos;
       },
       allChecked () {
         return this.todos.every(todo => todo.done)
@@ -87,6 +88,9 @@
     },
     beforeCreate () {
       console.log('App - beforeCreate')
+    },
+
+    mounted () {
     },
     methods: {
       ...mapActions(['toggleAll', 'clearCompleted']),

@@ -49,6 +49,7 @@ export class Store {
     // bind commit and dispatch to self
     // 引入当前对象
     const store = this
+
     // 获取 dispatch 和commit
     const { dispatch, commit } = this
 
@@ -96,15 +97,23 @@ export class Store {
 
   get state () {
     // console.log("get state", this._vm, this._vm._data)
+    console.log('Store Get', '获取当前挂载到 [App !!! 不是 VueComponent] Vue 上的state')
     return this._vm._data.$$state
   }
 
   set state (v) {
+    console.log('直接设置值', v)
     if (__DEV__) {
       assert(false, `use store.replaceState() to explicit replace store state.`)
     }
   }
 
+  /**
+   * 提交 mutation
+   * @param _type
+   * @param _payload
+   * @param _options
+   */
   commit (_type, _payload, _options) {
     // check object-style commit
     const {
@@ -113,20 +122,32 @@ export class Store {
       options
     } = unifyObjectStyle(_type, _payload, _options)
 
+    // 获取提交的函数名和操作
     const mutation = { type, payload }
+
+    // 获取存储的函数
     const entry = this._mutations[type]
+
     if (!entry) {
       if (__DEV__) {
         console.error(`[vuex] unknown mutation type: ${type}`)
       }
       return
     }
+
+    // 修改全局的 committing 状态
     this._withCommit(() => {
+      // 执行包装后的 handler
       entry.forEach(function commitIterator (handler) {
+        // 这一步 参见 registerMutation 函数
         handler(payload)
       })
     })
 
+    /**
+     * 这里大概就是 mutations 不要异步的关键之一了吧
+     * 如果使用异步操作，下面的订阅会先执行，而且 this.state 夜神上一个状态
+     */
     this._subscribers
       .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
       .forEach(sub => sub(mutation, this.state))
@@ -142,9 +163,29 @@ export class Store {
     }
   }
 
+  /**
+   * 分发操作
+   * 订阅分 before 和 after，如果是before ，则在执行action前调用，after在执行action后调用
+   * 如果传递的异步不是 Promise,例如只有一个setTimeout，虽然vuex会包装成Promise，但 before和 action还是相当于同步
+   * 但如果传递的是一个 Promise 的 setTimeout，则会等 setTimeout的resolve后才会执行 after
+   * 如果一定要在action执行完拿到回调，action必须要返回Promise并resolve，其他的如setTimeout并无作用，还是会同时返回。
+   * addTodo ({ commit }, text) {
+        return new Promise(resolve => {
+          setTimeout(() => {
+            commit('addTodo', {
+              text,
+              done: false
+            })
+            resolve(true)
+          }, 5000)
+        })
+     }
+   * @param _type
+   * @param _payload
+   * @returns {Promise<any>}
+   */
   dispatch (_type, _payload) {
-    console.log('dispatch', _type, _payload)
-    console.log("asfdsafasd",_type,)
+    // console.log('dispatch', _type, _payload)
     // check object-style dispatch
     const {
       type,
@@ -160,6 +201,7 @@ export class Store {
       return
     }
 
+    // 执行 action 前执行 before 订阅
     try {
       this._actionSubscribers
         .slice() // shallow copy to prevent iterator invalidation if subscriber synchronously calls unsubscribe
@@ -172,6 +214,7 @@ export class Store {
       }
     }
 
+    // 执行 action
     const result = entry.length > 1
       ? Promise.all(entry.map(handler => handler(payload)))
       : entry[0](payload)
@@ -205,22 +248,46 @@ export class Store {
     })
   }
 
+  /**
+   * 提供订阅
+   * @param fn
+   * @param options
+   * @returns {Function}
+   */
   subscribe (fn, options) {
     return genericSubscribe(fn, this._subscribers, options)
   }
 
+  /**
+   * 订阅Action变化，尽量传递对象,如果传递函数，默认是在执行前调用
+   * 支持 before 和 after
+   * @param fn
+   * @param options
+   * @returns {Function}
+   */
   subscribeAction (fn, options) {
     const subs = typeof fn === 'function' ? { before: fn } : fn
     return genericSubscribe(subs, this._actionSubscribers, options)
   }
 
-  watch (getter, cb, options) {
+  /**
+   * 监听属性变化
+   * @param fn
+   * @param cb
+   * @param options
+   * @returns {() => void}
+   */
+  watch (fn, cb, options) {
     if (__DEV__) {
-      assert(typeof getter === 'function', `store.watch only accepts a function.`)
+      assert(typeof fn === 'function', `store.watch only accepts a function.`)
     }
-    return this._watcherVM.$watch(() => getter(this.state, this.getters), cb, options)
+    return this._watcherVM.$watch(() => fn(this.state, this.getters), cb, options)
   }
 
+  /**
+   * 替换State
+   * @param state
+   */
   replaceState (state) {
     this._withCommit(() => {
       this._vm._data.$$state = state
@@ -272,19 +339,30 @@ export class Store {
   }
 
   _withCommit (fn) {
+    // 获取提交状态并设置提交状态=true
     const committing = this._committing
     this._committing = true
+    // 执行函数
     fn()
+    // 还原成之前的提交状态
     this._committing = committing
   }
 }
 
+/**
+ * 通用订阅
+ * @param fn
+ * @param subs 订阅定义的数组 [this._subscribers等]
+ * @param options
+ * @returns {Function} // 返回一个函数，如果执行会删除当前任务
+ */
 function genericSubscribe (fn, subs, options) {
+  // 是否添加了订阅函数,并判断是否要前置,后面类似一个队列，挨个执行
   if (subs.indexOf(fn) < 0) {
-    options && options.prepend
-      ? subs.unshift(fn)
-      : subs.push(fn)
+    // 是否前置
+    options && options.prepend ? subs.unshift(fn) : subs.push(fn)
   }
+
   return () => {
     const i = subs.indexOf(fn)
     if (i > -1) {
@@ -388,10 +466,19 @@ function resetStoreVM (store, state, hot) {
   }
 }
 
+/**
+ * 安装module
+ * @param store
+ * @param rootState
+ * @param path
+ * @param module
+ * @param hot
+ */
 function installModule (store, rootState, path, module, hot) {
   // 没有多模块的时候 path =[], 就在根上
   const isRoot = !path.length
 
+  // 获取命名空间
   const namespace = store._modules.getNamespace(path)
 
   console.log('namespace', namespace, module.namespaced)
@@ -420,6 +507,7 @@ function installModule (store, rootState, path, module, hot) {
     })
   }
 
+  // 当前命名空间的store
   const local = module.context = makeLocalContext(store, namespace, path)
 
   module.forEachMutation((mutation, key) => {
@@ -529,15 +617,38 @@ function makeLocalGetters (store, namespace) {
   return store._makeLocalGettersCache[namespace]
 }
 
+/**
+ * 对 handler 做一个包装
+ * @param store
+ * @param type
+ * @param handler
+ * @param local
+ */
 function registerMutation (store, type, handler, local) {
+  // debugger
   const entry = store._mutations[type] || (store._mutations[type] = [])
+
+  // console.log('registerMutation - entry', Object.prototype.toString.call(entry))
+
   entry.push(function wrappedMutationHandler (payload) {
+    // 让 store - this 调用 handler，然后把 local.state 的数据 和 payload 传递过去
     handler.call(store, local.state, payload)
   })
 }
 
+/**
+ * 注册用户传递的 Action
+ * @param store
+ * @param type
+ * @param handler
+ * @param local
+ */
 function registerAction (store, type, handler, local) {
   const entry = store._actions[type] || (store._actions[type] = [])
+
+  /**
+   * 解惑，为什么在写action里是 {commit}
+   */
   entry.push(function wrappedActionHandler (payload) {
     let res = handler.call(store, {
       dispatch: local.dispatch,
@@ -547,9 +658,12 @@ function registerAction (store, type, handler, local) {
       rootGetters: store.getters,
       rootState: store.state
     }, payload)
+
+    // 判断是不是 Promise ，不是则包装一下，但是如果是异步操作比如setTimeout，就会有问题
     if (!isPromise(res)) {
       res = Promise.resolve(res)
     }
+
     if (store._devtoolHook) {
       return res.catch(err => {
         store._devtoolHook.emit('vuex:error', err)
@@ -561,6 +675,13 @@ function registerAction (store, type, handler, local) {
   })
 }
 
+/**
+ * 处理 Getter
+ * @param store
+ * @param type
+ * @param rawGetter
+ * @param local
+ */
 function registerGetter (store, type, rawGetter, local) {
   if (store._wrappedGetters[type]) {
     if (__DEV__) {
@@ -592,10 +713,23 @@ function enableStrictMode (store) {
   }, { deep: true, sync: true })
 }
 
+/**
+ * 获取嵌套的状态
+ * @param state
+ * @param path
+ * @returns {*}
+ */
 function getNestedState (state, path) {
   return path.reduce((state, key) => state[key], state)
 }
 
+/**
+ * 统一对象导出
+ * @param type
+ * @param payload
+ * @param options
+ * @returns {{type: *, payload: *, options: *}}
+ */
 function unifyObjectStyle (type, payload, options) {
   if (isObject(type) && type.type) {
     options = payload
